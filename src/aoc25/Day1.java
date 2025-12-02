@@ -60,7 +60,9 @@ public class Day1 {
         
         int dial;
         int rotation;
+        // Check the end result
         int totalStopsAtZero = 0;
+        // The amount of times it has looped?
         int totalTimesThroughZero = 0;
         
         dial = 50;
@@ -68,7 +70,17 @@ public class Day1 {
         rotation = getRotation(br);
         
         while (rotation != 0) {
-            dial += rotation;
+            int after = dial + rotation;
+            // negative -> positive/zero OR positive > negative/zero
+            // passes through zero and not accounted later
+            if ((dial < 0 && (after == 0 || after > 0))
+                    || (dial > 0 && (after == 0 || after < 0))) {
+                totalTimesThroughZero++;
+            }
+            dial = after;
+            // loops = number of times we have to apply mod
+            int loops = Math.abs(dial / 100);
+            totalTimesThroughZero += loops;
             dial = Math.floorMod(dial, 100);
             if (dial == 0) {
                 totalStopsAtZero++;
@@ -77,7 +89,8 @@ public class Day1 {
             rotation = getRotation(br);
         }
         
-        System.out.println("TotalZero = " + totalStopsAtZero);
+        System.out.println("TotalStopsAtZero = " + totalStopsAtZero);
+        System.out.println("TotalTimesThroughZero = " + totalTimesThroughZero);
         
         br.close();
         fr.close();
