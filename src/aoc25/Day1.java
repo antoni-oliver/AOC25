@@ -60,7 +60,8 @@ public class Day1 {
         
         int dial;
         int rotation;
-        int totalZero = 0;
+        int totalStopsAtZero = 0;
+        int totalTimesThroughZero = 0;
         
         dial = 50;
         
@@ -70,13 +71,13 @@ public class Day1 {
             dial += rotation;
             dial = Math.floorMod(dial, 100);
             if (dial == 0) {
-                totalZero++;
+                totalStopsAtZero++;
             }
             
             rotation = getRotation(br);
         }
         
-        System.out.println("TotalZero = " + totalZero);
+        System.out.println("TotalZero = " + totalStopsAtZero);
         
         br.close();
         fr.close();
