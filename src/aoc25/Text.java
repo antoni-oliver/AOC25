@@ -161,11 +161,14 @@ public class Text {
     
     public void removeLeastJolt(int[] jolts) {
         int minIndex = -1;
-        int min = 10;
+        long min = -1;
         for (int i = 0; i < jolts.length; i++) {
-            if (jolts[i] != 0 && jolts[i] < min) {
-                min = jolts[i];
-                minIndex = i;
+            int j = jolts[i];
+            if (j != 0) {
+                jolts[i] = 0;
+                long sum = sumJolts(jolts);
+                // if ()
+                jolts[i] = j; // undo
             }
             i++;
         }
@@ -190,6 +193,18 @@ public class Text {
     public long getLargestJoltageN(int N) {
         int[] digits = toDigitArray();
         int digitToRemove = 1;
+        /*
+        ok, no
+        si tenc 16 dígits i me n'he de quedar 12,
+        he d'eliminar quatre dígits en total
+        des del principi, si és el número més baix, el llev
+         --> però no fa falta que sigui el més baix,
+         --> també l'he de llevar si és més baix que els 8 que queden
+         ==> IDÒ, agafar els N dígits que queden més alts i si és més baix que
+             cap d'ells, fora?????
+        bah, a dinar.
+        */
+        
         for (int n = 0; n < digits.length - N; n++) {
             removeLeastJolt(digits);
         }
