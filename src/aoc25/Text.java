@@ -135,4 +135,65 @@ public class Text {
         }
         return s;
     }
+    
+    public int[] toDigitArray() {
+        int[] digits = new int[longitud];
+        for (int i = 0; i < longitud; i++) {
+            digits[i] = toInt(lletres[i]);
+        }
+        return digits;
+    }
+    
+    
+    public long getLargestJoltage2() {
+        int[] digits = toDigitArray();
+        long max = 0;
+        for (int i = 0; i < longitud - 1; i++) {
+            for (int j = i + 1; j < longitud; j++) {
+                long current = digits[i] * 10 + digits[j];
+                if (current > max) {
+                    max = current;
+                }
+            }
+        }
+        return max;
+    }
+    
+    public void removeLeastJolt(int[] jolts) {
+        int minIndex = -1;
+        int min = 10;
+        for (int i = 0; i < jolts.length; i++) {
+            if (jolts[i] != 0 && jolts[i] < min) {
+                min = jolts[i];
+                minIndex = i;
+            }
+            i++;
+        }
+        if (minIndex > -1) {
+            jolts[minIndex] = 0;
+        }
+    }
+    
+    public long sumJolts(int[] jolts) {
+        long sum = 0;
+        for (int i = 0; i < jolts.length; i++) {
+            if (jolts[i] == 0) {
+                continue;
+            } else {
+                sum *= 10;
+                sum += jolts[i];
+            }
+        }
+        return sum;
+    }
+    
+    public long getLargestJoltageN(int N) {
+        int[] digits = toDigitArray();
+        int digitToRemove = 1;
+        for (int n = 0; n < digits.length - N; n++) {
+            removeLeastJolt(digits);
+        }
+        return sumJolts(digits);
+    }
+    
 }
