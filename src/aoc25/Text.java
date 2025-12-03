@@ -1,5 +1,7 @@
 package aoc25;
 
+import java.util.Arrays;
+
 /**
  * ~Classe Paraula, però amb espais i tot el que faci falta.
  * És a dir, MyString.
@@ -159,24 +161,6 @@ public class Text {
         return max;
     }
     
-    public void removeLeastJolt(int[] jolts) {
-        int minIndex = -1;
-        long min = -1;
-        for (int i = 0; i < jolts.length; i++) {
-            int j = jolts[i];
-            if (j != 0) {
-                jolts[i] = 0;
-                long sum = sumJolts(jolts);
-                // if ()
-                jolts[i] = j; // undo
-            }
-            i++;
-        }
-        if (minIndex > -1) {
-            jolts[minIndex] = 0;
-        }
-    }
-    
     public long sumJolts(int[] jolts) {
         long sum = 0;
         for (int i = 0; i < jolts.length; i++) {
@@ -190,24 +174,87 @@ public class Text {
         return sum;
     }
     
+    // Too slow
+    private int[] maxBattery(int[] battery, int N, int currentLength) {
+        if (currentLength == N) {
+            return battery;
+        } else {
+            // Calculate all possible batteries with one removed
+            long max = 0;
+            int[] maxBattery = null;
+            for (int i = 0; i < battery.length; i++) {
+                int[] newBattery = new int[battery.length];
+                if (battery[i] != 0) {
+                    // Can remove this digit
+                    System.arraycopy(battery, 0, newBattery, 0, battery.length);
+                    newBattery[i] = 0;
+                    int[] result = maxBattery(newBattery, N, currentLength - 1);
+                    long sum = sumJolts(result);
+                    if (sum > max) {
+                        maxBattery = result;
+                    }
+                }
+            }
+            return maxBattery;
+        }
+    }
+    
     public long getLargestJoltageN(int N) {
         int[] digits = toDigitArray();
-        int digitToRemove = 1;
         /*
-        ok, no
-        si tenc 16 dígits i me n'he de quedar 12,
-        he d'eliminar quatre dígits en total
-        des del principi, si és el número més baix, el llev
-         --> però no fa falta que sigui el més baix,
-         --> també l'he de llevar si és més baix que els 8 que queden
-         ==> IDÒ, agafar els N dígits que queden més alts i si és més baix que
-             cap d'ells, fora?????
-        bah, a dinar.
+        1. Count how many of each digit.
+        2. L = length - N, number of excess digits.
+        3. From the start, remove AT MOST L digits,
+           while the current digit is less than the next one.
+        4. Remove digits from that point onwards if they are low.
         */
         
-        for (int n = 0; n < digits.length - N; n++) {
-            removeLeastJolt(digits);
+        int[] freqs = new int[10];
+        // init
+        for (int i = 0; i < freqs.length; i++) {
+            freqs[i] = 0;
         }
+        // count
+        for (int i = 0; i < digits.length; i++) {
+            int digit = digits[i];
+            freqs[digit - 1]++;
+        }
+        int L = digits.length - N;
+        int index = 0;
+        while (index < digits.length - 1 && L > 0 && digits[index] < digits[index + 1]) {
+            freqs[digits[index] - 1]--; // remove one freq
+            digits[index] = 0; // remove it
+            L--; // one less to remove
+            index++; // advance
+        }
+        System.out.println("Removed first " + index);
+        // Find L digits to remove
+        int[] toRemove = new int[10];
+        for (int i = 0; i < toRemove.length; i++) {
+            toRemove[i] = 0;
+        }
+        int pending = 0;
+        for (int i = 0; i < freqs.length && pending < L; i++) {
+            while (toRemove[i] < freqs[i] && pending < L) {
+                toRemove[i]++;
+                pending++;
+            }
+        }
+        // Remove L digits, until the end of the array or we're left with only L digits
+        while (index < digits.length) {
+            int digit = digits[index];
+            if (toRemove[digit - 1] > 0) {
+                digits[index] = 0;
+                toRemove[digit - 1]--;
+                L--;
+            }
+            index++;
+        }
+        return sumJolts(digits);
+    }
+    
+    public long test() {
+        int[] digits = toDigitArray();
         return sumJolts(digits);
     }
     

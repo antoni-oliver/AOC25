@@ -10,7 +10,7 @@ public class Day3 {
      * @param args the command line arguments
      */
     public static void main(String[] args) throws Exception {
-        TextReader reader = new TextReader("day/3/test");
+        TextReader reader = new TextReader("day/3/input");
         
         Text bank = reader.readText('\n');
         long sumJoltage2 = 0;
@@ -28,6 +28,8 @@ public class Day3 {
         
         System.out.println("sumJoltage2 = " + sumJoltage2);
         System.out.println("sumJoltage12 = " + sumJoltage12);
+        
+        System.out.println("<<<" + new Text("434234234278").test());
         
         reader.tanca();
     }
