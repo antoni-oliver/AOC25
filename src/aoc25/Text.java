@@ -1,6 +1,7 @@
 package aoc25;
 
 import java.util.Arrays;
+import java.util.Stack;
 
 /**
  * ~Classe Paraula, però amb espais i tot el que faci falta.
@@ -201,56 +202,38 @@ public class Text {
     
     public long getLargestJoltageN(int N) {
         int[] digits = toDigitArray();
-        /*
-        1. Count how many of each digit.
-        2. L = length - N, number of excess digits.
-        3. From the start, remove AT MOST L digits,
-           while the current digit is less than the next one.
-        4. Remove digits from that point onwards if they are low.
-        */
+                
+        Stack<Integer> stack = new Stack<>();
+        int remaining = digits.length;
+        int onStack = 0;
         
-        int[] freqs = new int[10];
-        // init
-        for (int i = 0; i < freqs.length; i++) {
-            freqs[i] = 0;
-        }
-        // count
-        for (int i = 0; i < digits.length; i++) {
-            int digit = digits[i];
-            freqs[digit - 1]++;
-        }
-        int L = digits.length - N;
-        int index = 0;
-        while (index < digits.length - 1 && L > 0 && digits[index] < digits[index + 1]) {
-            freqs[digits[index] - 1]--; // remove one freq
-            digits[index] = 0; // remove it
-            L--; // one less to remove
-            index++; // advance
-        }
-        System.out.println("Removed first " + index);
-        // Find L digits to remove
-        int[] toRemove = new int[10];
-        for (int i = 0; i < toRemove.length; i++) {
-            toRemove[i] = 0;
-        }
-        int pending = 0;
-        for (int i = 0; i < freqs.length && pending < L; i++) {
-            while (toRemove[i] < freqs[i] && pending < L) {
-                toRemove[i]++;
-                pending++;
+        int index;
+        for (index = 0; index < digits.length && remaining + onStack > N; index++) {
+            int current = digits[index];
+            // 1. Dequeue the ones that are less than the current
+            while (onStack > 0 && stack.peek() < current && remaining + onStack > N) {
+                stack.pop();
+                onStack--;
             }
-        }
-        // Remove L digits, until the end of the array or we're left with only L digits
-        while (index < digits.length) {
-            int digit = digits[index];
-            if (toRemove[digit - 1] > 0) {
-                digits[index] = 0;
-                toRemove[digit - 1]--;
-                L--;
+            if (onStack < N) {
+                stack.push(current);
+                onStack++;
             }
+            remaining--;
+        }
+        
+        int[] newDigits = new int[N];
+        // putting the last directly
+        for (int i = onStack; i < N; i++) {
+            newDigits[i] = digits[index];
             index++;
         }
-        return sumJolts(digits);
+        // putting the ones on the stack
+        while (--onStack >= 0) {
+            newDigits[onStack] = stack.pop();
+        }
+        
+        return sumJolts(newDigits);
     }
     
     public long test() {
