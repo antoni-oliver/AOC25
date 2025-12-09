@@ -111,10 +111,12 @@ public class Day9 {
                     toCheck.add(new Range(B, C));
                     toCheck.add(new Range(C, D));
                     toCheck.add(new Range(D, A));
-                    while (!toCheck.isEmpty()) {
+                    boolean foundRangeNotCorrect = false;
+                    while (!toCheck.isEmpty() && !foundRangeNotCorrect) {
                         Range r = toCheck.remove();
                         System.out.println(r);
-                        for (int k = 0; k < array.length - 1; k++) {
+                        boolean foundSegment = false;
+                        for (int k = 0; k < array.length - 1 && !foundSegment; k++) {
                             Range segment = new Range(array[k], array[k + 1]);
                             if (segment.start.x == segment.end.x) {
                                 int x = segment.start.x;
@@ -127,31 +129,37 @@ public class Day9 {
                                         rBottom = r.end.y;
                                     } else {
                                         rTop = r.end.y;
-                                        rBottom = r.end.y;
+                                        rBottom = r.start.y;
                                     }
                                     if (segment.start.y < segment.end.y) {
                                         sTop = segment.start.y;
                                         sBottom = segment.end.y;
                                     } else {
                                         sTop = segment.end.y;
-                                        sBottom = segment.end.y;
+                                        sBottom = segment.start.y;
                                     }
                                     if (sTop <= rTop && sBottom >= rBottom) {
                                         // map segment includes range to check
                                         // done
-                                    } else if (sTop <= rTop) {
+                                        foundSegment = true;
+                                    } else if (sTop <= rTop && sBottom >= rTop) {
                                         // map segment includes the start of the range
                                         // re-add the end of the range
                                         toCheck.add(new Range(new Position(x, sBottom + 1), new Position(x, rBottom)));
-                                    } else if (sBottom >= rBottom) {
+                                        foundSegment = true;
+                                    } else if (sBottom >= rBottom && sTop <= rBottom) {
                                         // map segment includes the end of the range
                                         // re-add the start of the range
                                         toCheck.add(new Range(new Position(x, rTop), new Position(x, sTop - 1)));
-                                    } else {
+                                        foundSegment = true;
+                                    } else if (sTop > rTop && sBottom < rBottom) {
                                         // map segment include sthe middle of the range
                                         // add the start and the end of the range
                                         toCheck.add(new Range(new Position(x, rTop), new Position(x, sTop - 1)));
                                         toCheck.add(new Range(new Position(x, sBottom + 1), new Position(x, rBottom)));
+                                        foundSegment = true;
+                                    } else {
+                                        // not found
                                     }
                                 }
                             } else if (segment.start.y == segment.end.y) {
@@ -165,37 +173,49 @@ public class Day9 {
                                         rRight = r.end.x;
                                     } else {
                                         rLeft = r.end.x;
-                                        rRight = r.end.x;
+                                        rRight = r.start.x;
                                     }
                                     if (segment.start.x < segment.end.x) {
                                         sLeft = segment.start.x;
                                         sRight = segment.end.x;
                                     } else {
                                         sLeft = segment.end.x;
-                                        sRight = segment.end.x;
+                                        sRight = segment.start.x;
                                     }
                                     if (sLeft <= rLeft && sRight >= rRight) {
                                         // map segment includes range to check
                                         // done
-                                    } else if (sLeft <= rLeft) {
+                                        foundSegment = true;
+                                    } else if (sLeft <= rLeft && sRight >= rLeft) {
                                         // map segment includes the start of the range
                                         // re-add the end of the range
                                         toCheck.add(new Range(new Position(sRight + 1, y), new Position(rRight, y)));
-                                    } else if (sRight >= rRight) {
+                                        foundSegment = true;
+                                    } else if (sRight >= rRight && sLeft <= rRight) {
                                         // map segment includes the end of the range
                                         // re-add the start of the range
                                         toCheck.add(new Range(new Position(rLeft, y), new Position(sLeft - 1, y)));
-                                    } else {
+                                        foundSegment = true;
+                                    } else if (sLeft > rLeft && sRight < rRight) {
                                         // map segment include sthe middle of the range
                                         // add the start and the end of the range
                                         toCheck.add(new Range(new Position(rLeft, y), new Position(sLeft - 1, y)));
                                         toCheck.add(new Range(new Position(sRight + 1, y), new Position(rRight, y)));
+                                        foundSegment = true;
+                                    } else {
+                                        // not found
                                     }
                                 }
                             } else {
                                 System.err.println("Should not happen, right?");
                             }
                         }
+                        if (!foundSegment) {
+                            foundRangeNotCorrect = true;
+                        }
+                    }
+                    if (!foundRangeNotCorrect) {
+                        largestP2 = area;
                     }
                 }
             }
