@@ -17,6 +17,11 @@ import java.util.Queue;
 public class Day9 {
 
     record Position(int x, int y) {};
+    record Segment(Position start, Position end) {
+        boolean isHorizontal() {
+            return start.y == end.y;
+        }
+    };
     
     static LinkedList<Position> positions;
     static int minX = -1;
@@ -57,11 +62,92 @@ public class Day9 {
         }
     }
     
+    static boolean intersection(Position[] polygon, Segment side) {
+        boolean found = false;
+        boolean sideHorizontal = side.start.y == side.end.y;
+        for (int i = 0; i < polygon.length - 1 && !found; i++) {
+            Segment segment = new Segment(polygon[i], polygon[i+1]);
+            boolean segmentHorizontal = segment.start.y == segment.end.y;
+            if (sideHorizontal && !segmentHorizontal) {
+                // may cross
+                int segmentX = segment.start.x;
+                if (segment.start.y < segment.end.y) {
+                    if (segment.start.y >= side.start.y || segment.end.y <= side.start.y) {
+                        continue;
+                    }
+                } else {
+                    if (segment.end.y >= side.start.y || segment.start.y <= side.start.y) {
+                        continue;
+                    }
+                }
+                if (side.start.x < segmentX && side.end.x > segmentX
+                        || side.start.x > segmentX && side.end.x < segmentX) {
+                    found = true;
+                }
+            } else if (!sideHorizontal && segmentHorizontal) {
+                // may cross
+                int segmentY = segment.start.y;
+                if (segment.start.x < segment.end.x) {
+                    if (segment.start.x >= side.start.x || segment.end.x <= side.start.x) {
+                        continue;
+                    }
+                } else {
+                    if (segment.end.x >= side.start.x || segment.start.x <= side.start.x) {
+                        continue;
+                    }
+                }
+                if (side.start.y < segmentY && side.end.y > segmentY
+                        || side.start.y > segmentY && side.end.y < segmentY) {
+                    found = true;
+                }
+            }
+        }
+        return found;
+    }
+    
+    static boolean inOrEdge(Position p, int top, int right, int bottom, int left) {
+        return p.x >= left && p.x <= right && p.y >= top && p.y <= bottom;
+    }
+    
+    static boolean inStrict(Position p, int top, int right, int bottom, int left) {
+        return p.x > left && p.x < right && p.y > top && p.y < bottom;
+    }
+    
+    static boolean out(Position p, int top, int right, int bottom, int left) {
+        return !inOrEdge(p, top, right, bottom, left);
+    }
+    
+    static boolean inSegment(Position p, Segment s) {
+        if (s.start.x == s.end.x) {
+            // vertical
+            if (p.x != s.start.x) {
+                return false;
+            }
+            if (s.start.y < s.end.y) {
+                // down
+                return s.start.y <= p.y && s.end.y >= p.y;
+            } else {
+                return s.end.y <= p.y && s.start.y >= p.y;
+            }
+        } else {
+            // horizontal
+            if (p.y != s.start.y) {
+                return false;
+            }
+            if (s.start.x < s.end.x) {
+                // down
+                return s.start.x <= p.x && s.end.x >= p.x;
+            } else {
+                return s.end.x <= p.x && s.start.x >= p.x;
+            }
+        }
+    }
+    
     /**
      * @param args the command line arguments
      */
     public static void main(String[] args) {
-        getData("day/9/test");
+        getData("day/9/input");
         
         // PART 1
         Position[] array = positions.toArray(Position[]::new);
@@ -80,8 +166,6 @@ public class Day9 {
         }
         System.out.println("largestP1: " + largestP1);
         
-        record Range(Position start, Position end) {};
-        
         long largestP2 = 0;
         for (int i = 0; i < array.length - 1; i++) {
             Position a = array[i];
@@ -93,9 +177,8 @@ public class Day9 {
                 if (area > largestP2) {
                     System.out.println("area: " + area);
                     // it would be larger, check if it's okay though
-                    LinkedList<Range> toCheck = new LinkedList<>();
                     int top = Math.min(a.y, b.y);
-                    int right = Math.max(a.x, b.y);
+                    int right = Math.max(a.x, b.x);
                     int bottom = Math.max(a.y, b.y);
                     int left = Math.min(a.x, b.x);
                     /*
@@ -107,115 +190,38 @@ public class Day9 {
                     Position B = new Position(right, top);
                     Position C = new Position(right, bottom);
                     Position D = new Position(left, bottom);
-                    toCheck.add(new Range(A, B));
-                    toCheck.add(new Range(B, C));
-                    toCheck.add(new Range(C, D));
-                    toCheck.add(new Range(D, A));
-                    boolean foundRangeNotCorrect = false;
-                    while (!toCheck.isEmpty() && !foundRangeNotCorrect) {
-                        Range r = toCheck.remove();
-                        System.out.println(r);
-                        boolean foundSegment = false;
-                        for (int k = 0; k < array.length - 1 && !foundSegment; k++) {
-                            Range segment = new Range(array[k], array[k + 1]);
-                            if (segment.start.x == segment.end.x) {
-                                int x = segment.start.x;
-                                // vertical
-                                if (r.start.x == x && r.start.x == x) {
-                                    // also vertical, same col
-                                    int rTop, rBottom, sTop, sBottom;
-                                    if (r.start.y < r.end.y) {
-                                        rTop = r.start.y;
-                                        rBottom = r.end.y;
-                                    } else {
-                                        rTop = r.end.y;
-                                        rBottom = r.start.y;
-                                    }
-                                    if (segment.start.y < segment.end.y) {
-                                        sTop = segment.start.y;
-                                        sBottom = segment.end.y;
-                                    } else {
-                                        sTop = segment.end.y;
-                                        sBottom = segment.start.y;
-                                    }
-                                    if (sTop <= rTop && sBottom >= rBottom) {
-                                        // map segment includes range to check
-                                        // done
-                                        foundSegment = true;
-                                    } else if (sTop <= rTop && sBottom >= rTop) {
-                                        // map segment includes the start of the range
-                                        // re-add the end of the range
-                                        toCheck.add(new Range(new Position(x, sBottom + 1), new Position(x, rBottom)));
-                                        foundSegment = true;
-                                    } else if (sBottom >= rBottom && sTop <= rBottom) {
-                                        // map segment includes the end of the range
-                                        // re-add the start of the range
-                                        toCheck.add(new Range(new Position(x, rTop), new Position(x, sTop - 1)));
-                                        foundSegment = true;
-                                    } else if (sTop > rTop && sBottom < rBottom) {
-                                        // map segment include sthe middle of the range
-                                        // add the start and the end of the range
-                                        toCheck.add(new Range(new Position(x, rTop), new Position(x, sTop - 1)));
-                                        toCheck.add(new Range(new Position(x, sBottom + 1), new Position(x, rBottom)));
-                                        foundSegment = true;
-                                    } else {
-                                        // not found
-                                    }
-                                }
-                            } else if (segment.start.y == segment.end.y) {
-                                int y = segment.start.y;
-                                // horizontal
-                                if (r.start.y == y && r.start.y == y) {
-                                    // also horizontal, same row
-                                    int rLeft, rRight, sLeft, sRight;
-                                    if (r.start.x < r.end.x) {
-                                        rLeft = r.start.x;
-                                        rRight = r.end.x;
-                                    } else {
-                                        rLeft = r.end.x;
-                                        rRight = r.start.x;
-                                    }
-                                    if (segment.start.x < segment.end.x) {
-                                        sLeft = segment.start.x;
-                                        sRight = segment.end.x;
-                                    } else {
-                                        sLeft = segment.end.x;
-                                        sRight = segment.start.x;
-                                    }
-                                    if (sLeft <= rLeft && sRight >= rRight) {
-                                        // map segment includes range to check
-                                        // done
-                                        foundSegment = true;
-                                    } else if (sLeft <= rLeft && sRight >= rLeft) {
-                                        // map segment includes the start of the range
-                                        // re-add the end of the range
-                                        toCheck.add(new Range(new Position(sRight + 1, y), new Position(rRight, y)));
-                                        foundSegment = true;
-                                    } else if (sRight >= rRight && sLeft <= rRight) {
-                                        // map segment includes the end of the range
-                                        // re-add the start of the range
-                                        toCheck.add(new Range(new Position(rLeft, y), new Position(sLeft - 1, y)));
-                                        foundSegment = true;
-                                    } else if (sLeft > rLeft && sRight < rRight) {
-                                        // map segment include sthe middle of the range
-                                        // add the start and the end of the range
-                                        toCheck.add(new Range(new Position(rLeft, y), new Position(sLeft - 1, y)));
-                                        toCheck.add(new Range(new Position(sRight + 1, y), new Position(rRight, y)));
-                                        foundSegment = true;
-                                    } else {
-                                        // not found
-                                    }
-                                }
-                            } else {
-                                System.err.println("Should not happen, right?");
-                            }
-                        }
-                        if (!foundSegment) {
-                            foundRangeNotCorrect = true;
+                    Segment TOP = new Segment(A, B);
+                    Segment RIGHT = new Segment(B, C);
+                    Segment BOTTOM = new Segment(C, D);
+                    Segment LEFT = new Segment(D, A);
+//                    if (!(intersection(array, new Segment(A, B))
+//                            || intersection(array, new Segment(B, C))
+//                            || intersection(array, new Segment(C, D))
+//                            || intersection(array, new Segment(D, A)))) {
+//                        largestP2 = area;
+//                    }
+                    boolean found = false;
+                    for (int k = 0; k < array.length && !found; k++) {
+                        int k2 = k + 1;
+                        if (k2 == array.length) k2 = 0;
+                        Segment s = new Segment(array[k], array[k2]);
+                        boolean startInStrict = inStrict(array[k], top, right, bottom, left);
+                        boolean endInStrict = inStrict(array[k2], top, right, bottom, left);
+                        boolean startInOrEdge = inOrEdge(array[k], top, right, bottom, left);
+                        boolean endInOrEdge = inOrEdge(array[k2], top, right, bottom, left);
+                        boolean startOut = out(array[k], top, right, bottom, left);
+                        boolean endOut = out(array[k2], top, right, bottom, left);
+                        if (startInStrict || endInStrict
+                                || (s.isHorizontal() && (s.start.x < s.end.x && inSegment(s.start, LEFT) && inSegment(s.end, RIGHT) && !s.start.equals(A) && !s.start.equals(D) && !s.end.equals(B) && !s.end.equals(C))
+                                                                             || inSegment(s.end, LEFT) && inSegment(s.start, RIGHT) && !s.start.equals(B) && !s.start.equals(C) && !s.end.equals(A) && !s.end.equals(D))
+                                || (s.start.y < s.end.y && inSegment(s.start, TOP) && inSegment(s.end, BOTTOM) && !s.start.equals(A) && !s.start.equals(B) && !s.end.equals(C) && !s.end.equals(D))
+                                                        || inSegment(s.end, TOP) && inSegment(s.start, BOTTOM) && !s.start.equals(C) && !s.start.equals(D) && !s.end.equals(A) && !s.end.equals(B)) {
+                            found = true;
                         }
                     }
-                    if (!foundRangeNotCorrect) {
+                    if (!found) {
                         largestP2 = area;
+                        System.out.println("check");
                     }
                 }
             }
