@@ -21,6 +21,13 @@ public class Day9 {
         boolean isHorizontal() {
             return start.y == end.y;
         }
+        Segment normalize() {
+            if (start.x > end.x || start.y > end.y) {
+                return new Segment(end, start);
+            } else {
+                return this;
+            }
+        }
     };
     
     static LinkedList<Position> positions;
@@ -63,46 +70,39 @@ public class Day9 {
     }
     
     static boolean intersection(Position[] polygon, Segment side) {
-        boolean found = false;
-        boolean sideHorizontal = side.start.y == side.end.y;
-        for (int i = 0; i < polygon.length - 1 && !found; i++) {
-            Segment segment = new Segment(polygon[i], polygon[i+1]);
-            boolean segmentHorizontal = segment.start.y == segment.end.y;
-            if (sideHorizontal && !segmentHorizontal) {
-                // may cross
-                int segmentX = segment.start.x;
-                if (segment.start.y < segment.end.y) {
-                    if (segment.start.y >= side.start.y || segment.end.y <= side.start.y) {
-                        continue;
+        boolean sideHorizontal = side.isHorizontal();
+        side = side.normalize();
+        for (int i = 0; i < polygon.length; i++) {
+            Segment segment = new Segment(polygon[i], polygon[i+1 == polygon.length ? 0 : i+1]).normalize();
+            boolean segmentHorizontal = segment.isHorizontal();
+            if (sideHorizontal && segmentHorizontal && side.start.y == segment.start.y) {
+//                if (side.start.x < segment.start.x && side.end.x >= side.start.x) {
+//                    return true;
+//                }
+//                if (side.end.x > segment.end.x && side.start.x <= side.end.x) {
+//                    return true;
+//                }
+            } else if (!sideHorizontal && !segmentHorizontal && side.start.x == segment.start.x) {
+//                if (side.start.y < segment.start.y && side.end.y >= side.start.y) {
+//                    return true;
+//                }
+//                if (side.end.y > segment.end.y && side.start.y <= side.end.y) {
+//                    return true;
+//                }
+            } else {
+                if (sideHorizontal) {
+                    // side is horizontal, segment is vertical
+                    if (side.start.x < segment.start.x && side.end.x > segment.start.x && side.start.y > segment.start.y && side.start.y < segment.end.y) {
+                        return true;
                     }
                 } else {
-                    if (segment.end.y >= side.start.y || segment.start.y <= side.start.y) {
-                        continue;
+                    if (side.start.y < segment.start.y && side.end.y > segment.start.y && side.start.x > segment.start.x && side.start.x < segment.end.x) {
+                        return true;
                     }
-                }
-                if (side.start.x < segmentX && side.end.x > segmentX
-                        || side.start.x > segmentX && side.end.x < segmentX) {
-                    found = true;
-                }
-            } else if (!sideHorizontal && segmentHorizontal) {
-                // may cross
-                int segmentY = segment.start.y;
-                if (segment.start.x < segment.end.x) {
-                    if (segment.start.x >= side.start.x || segment.end.x <= side.start.x) {
-                        continue;
-                    }
-                } else {
-                    if (segment.end.x >= side.start.x || segment.start.x <= side.start.x) {
-                        continue;
-                    }
-                }
-                if (side.start.y < segmentY && side.end.y > segmentY
-                        || side.start.y > segmentY && side.end.y < segmentY) {
-                    found = true;
                 }
             }
         }
-        return found;
+        return false;
     }
     
     static boolean inOrEdge(Position p, int top, int right, int bottom, int left) {
@@ -147,7 +147,7 @@ public class Day9 {
      * @param args the command line arguments
      */
     public static void main(String[] args) {
-        getData("day/9/input");
+        getData("day/9/test");
         
         // PART 1
         Position[] array = positions.toArray(Position[]::new);
@@ -194,35 +194,61 @@ public class Day9 {
                     Segment RIGHT = new Segment(B, C);
                     Segment BOTTOM = new Segment(C, D);
                     Segment LEFT = new Segment(D, A);
-//                    if (!(intersection(array, new Segment(A, B))
-//                            || intersection(array, new Segment(B, C))
-//                            || intersection(array, new Segment(C, D))
-//                            || intersection(array, new Segment(D, A)))) {
-//                        largestP2 = area;
-//                    }
-                    boolean found = false;
-                    for (int k = 0; k < array.length && !found; k++) {
-                        int k2 = k + 1;
-                        if (k2 == array.length) k2 = 0;
-                        Segment s = new Segment(array[k], array[k2]);
-                        boolean startInStrict = inStrict(array[k], top, right, bottom, left);
-                        boolean endInStrict = inStrict(array[k2], top, right, bottom, left);
-                        boolean startInOrEdge = inOrEdge(array[k], top, right, bottom, left);
-                        boolean endInOrEdge = inOrEdge(array[k2], top, right, bottom, left);
-                        boolean startOut = out(array[k], top, right, bottom, left);
-                        boolean endOut = out(array[k2], top, right, bottom, left);
-                        if (startInStrict || endInStrict
-                                || (s.isHorizontal() && (s.start.x < s.end.x && inSegment(s.start, LEFT) && inSegment(s.end, RIGHT) && !s.start.equals(A) && !s.start.equals(D) && !s.end.equals(B) && !s.end.equals(C))
-                                                                             || inSegment(s.end, LEFT) && inSegment(s.start, RIGHT) && !s.start.equals(B) && !s.start.equals(C) && !s.end.equals(A) && !s.end.equals(D))
-                                || (s.start.y < s.end.y && inSegment(s.start, TOP) && inSegment(s.end, BOTTOM) && !s.start.equals(A) && !s.start.equals(B) && !s.end.equals(C) && !s.end.equals(D))
-                                                        || inSegment(s.end, TOP) && inSegment(s.start, BOTTOM) && !s.start.equals(C) && !s.start.equals(D) && !s.end.equals(A) && !s.end.equals(B)) {
-                            found = true;
+                    if (intersection(array, new Segment(A, B))
+                            || intersection(array, new Segment(B, C))
+                            || intersection(array, new Segment(C, D))
+                            || intersection(array, new Segment(D, A))) {
+                        continue;
+                    } else {
+                        boolean found = false;
+                        for (int k = 0; k < array.length && !found; k++) {
+                            if (inStrict(array[k], top, right, bottom, left)) {
+                                found = true;
+                            }
+                            int k2 = k == array.length - 2 ? 0 : array.length - 1;
+                            Position p1 = array[k];
+                            Position p2 = array[k2];
+                            if (inOrEdge(p1, top, right, bottom, left) && !inStrict(p1, top, right, bottom, left)
+                                    && inOrEdge(p2, top, right, bottom, left) && !inStrict(p2, top, right, bottom, left)) {
+                                // if they're both in edge, they must be in the same side (maybe a corner)
+                                if (inSegment(p1, TOP) && !inSegment(p2, TOP)
+                                        || inSegment(p1, RIGHT) && !inSegment(p2, RIGHT)
+                                        || inSegment(p1, BOTTOM) && !inSegment(p2, BOTTOM)
+                                        || inSegment(p1, LEFT) && !inSegment(p2, LEFT)) {
+                                    found = true;
+                                }
+                            }
+                        }
+                        if (found) {
+                            continue;
                         }
                     }
-                    if (!found) {
-                        largestP2 = area;
-                        System.out.println("check");
-                    }
+                    // Got it
+                    largestP2 = area;
+                    System.out.println("-");
+//                    boolean found = false;
+//                    for (int k = 0; k < array.length && !found; k++) {
+//                        int k2 = k + 1;
+//                        if (k2 == array.length) k2 = 0;
+//                        Segment s = new Segment(array[k], array[k2]);
+//                        boolean startInStrict = inStrict(array[k], top, right, bottom, left);
+//                        boolean endInStrict = inStrict(array[k2], top, right, bottom, left);
+//                        boolean startInOrEdge = inOrEdge(array[k], top, right, bottom, left);
+//                        boolean endInOrEdge = inOrEdge(array[k2], top, right, bottom, left);
+//                        boolean startOut = out(array[k], top, right, bottom, left);
+//                        boolean endOut = out(array[k2], top, right, bottom, left);
+//                        if (startInStrict || endInStrict
+//                                || (s.isHorizontal() && (s.start.x < s.end.x && inSegment(s.start, LEFT) && inSegment(s.end, RIGHT) && !s.start.equals(A) && !s.start.equals(D) && !s.end.equals(B) && !s.end.equals(C))
+//                                                                             || inSegment(s.end, LEFT) && inSegment(s.start, RIGHT) && !s.start.equals(B) && !s.start.equals(C) && !s.end.equals(A) && !s.end.equals(D))
+//                                || (s.start.y < s.end.y && inSegment(s.start, TOP) && inSegment(s.end, BOTTOM) && !s.start.equals(A) && !s.start.equals(B) && !s.end.equals(C) && !s.end.equals(D))
+//                                                        || inSegment(s.end, TOP) && inSegment(s.start, BOTTOM) && !s.start.equals(C) && !s.start.equals(D) && !s.end.equals(A) && !s.end.equals(B)) {
+//                            found = true;
+//                        }
+//                    }
+//                    if (!found) {
+//                        largestP2 = area;
+//                        System.out.println("check");
+//                    }
                 }
             }
         }
