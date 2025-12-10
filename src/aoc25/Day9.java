@@ -59,6 +59,8 @@ public class Day9 {
                 line = br.readLine();
             }
             
+            positions.add(positions.getFirst()); // closed
+            
             width = maxX - minX + 1;
             height = maxY - minY + 1;
             
@@ -69,34 +71,54 @@ public class Day9 {
         }
     }
     
-    static boolean intersection(Position[] polygon, Segment side) {
-        boolean sideHorizontal = side.isHorizontal();
-        side = side.normalize();
+    static boolean intersectsPolygon(Segment[] polygon, int top, int right, int bottom, int left) {
         for (int i = 0; i < polygon.length; i++) {
-            Segment segment = new Segment(polygon[i], polygon[i+1 == polygon.length ? 0 : i+1]).normalize();
-            boolean segmentHorizontal = segment.isHorizontal();
-            if (sideHorizontal && segmentHorizontal && side.start.y == segment.start.y) {
-//                if (side.start.x < segment.start.x && side.end.x >= side.start.x) {
-//                    return true;
-//                }
-//                if (side.end.x > segment.end.x && side.start.x <= side.end.x) {
-//                    return true;
-//                }
-            } else if (!sideHorizontal && !segmentHorizontal && side.start.x == segment.start.x) {
-//                if (side.start.y < segment.start.y && side.end.y >= side.start.y) {
-//                    return true;
-//                }
-//                if (side.end.y > segment.end.y && side.start.y <= side.end.y) {
-//                    return true;
-//                }
-            } else {
-                if (sideHorizontal) {
-                    // side is horizontal, segment is vertical
-                    if (side.start.x < segment.start.x && side.end.x > segment.start.x && side.start.y > segment.start.y && side.start.y < segment.end.y) {
+            Segment s = polygon[i];
+            if (s.isHorizontal()) {
+                /*
+                #-----#
+                |     |
+               xxxxxxxxx
+                |     |
+                #-----#
+                */
+                // s must be between TOP and BOTTOM (not included) and must cross LEFT, RIGHT or be inside.
+                int y = s.start.y;
+                if (y > top && y < bottom) {
+                    if (s.start.x < left && s.end.x > left) {
+                        // crosses LEFT
                         return true;
                     }
-                } else {
-                    if (side.start.y < segment.start.y && side.end.y > segment.start.y && side.start.x > segment.start.x && side.start.x < segment.end.x) {
+                    if (s.start.x < right && s.end.x > right) {
+                        // crosses RIGHT
+                        return true;
+                    }
+                    if (s.start.x >= left && s.end.x <= right) {
+                        return true;
+                    }
+                }
+            } else {
+                /*
+                   x
+                #--x--#
+                |  x  |
+                |  x  |
+                |  x  |
+                #--x--#
+                   x
+                */
+                // s must be between LEFT and RIGHT (not included) and must cross TOP, BOTTOM or be inside.
+                int x = s.start.x;
+                if (x > left && x < right) {
+                    if (s.start.y < top && s.end.y > top) {
+                        // crosses TOP
+                        return true;
+                    }
+                    if (s.start.y < bottom && s.end.y > bottom) {
+                        // crosses BOTTOM
+                        return true;
+                    }
+                    if (s.start.y >= top && s.end.y <= bottom) {
                         return true;
                     }
                 }
@@ -105,49 +127,38 @@ public class Day9 {
         return false;
     }
     
-    static boolean inOrEdge(Position p, int top, int right, int bottom, int left) {
-        return p.x >= left && p.x <= right && p.y >= top && p.y <= bottom;
-    }
-    
-    static boolean inStrict(Position p, int top, int right, int bottom, int left) {
-        return p.x > left && p.x < right && p.y > top && p.y < bottom;
-    }
-    
-    static boolean out(Position p, int top, int right, int bottom, int left) {
-        return !inOrEdge(p, top, right, bottom, left);
-    }
-    
-    static boolean inSegment(Position p, Segment s) {
-        if (s.start.x == s.end.x) {
-            // vertical
-            if (p.x != s.start.x) {
-                return false;
-            }
-            if (s.start.y < s.end.y) {
-                // down
-                return s.start.y <= p.y && s.end.y >= p.y;
-            } else {
-                return s.end.y <= p.y && s.start.y >= p.y;
-            }
-        } else {
-            // horizontal
-            if (p.y != s.start.y) {
-                return false;
-            }
-            if (s.start.x < s.end.x) {
-                // down
-                return s.start.x <= p.x && s.end.x >= p.x;
-            } else {
-                return s.end.x <= p.x && s.start.x >= p.x;
+    static boolean pointInsidePolygon(Segment[] polygon, double px, double py) {
+        int count = 0;
+        for (int i = 0; i < polygon.length; i++) {
+            Segment s = polygon[i];
+            if (!s.isHorizontal()) {
+                // Should suffice counting crosses left->right through vertical edges
+                /*
+                x
+                no
+                    #
+                    |
+                x   |   x
+               yes  |   no
+                    #
+                x
+                no
+                */
+                if (py > s.start.y && py < s.end.y) {
+                    if (px < s.start.x) {
+                        count++;
+                    }
+                }
             }
         }
+        return count % 2 == 1;
     }
-    
+        
     /**
      * @param args the command line arguments
      */
     public static void main(String[] args) {
-        getData("day/9/test");
+        getData("day/9/input");
         
         // PART 1
         Position[] array = positions.toArray(Position[]::new);
@@ -166,6 +177,12 @@ public class Day9 {
         }
         System.out.println("largestP1: " + largestP1);
         
+        // PART 2
+        Segment[] polygon = new Segment[array.length - 1];
+        for (int i = 0; i < polygon.length; i++) {
+            Segment s = new Segment(array[i], array[i + 1]).normalize();
+            polygon[i] = s;
+        }
         long largestP2 = 0;
         for (int i = 0; i < array.length - 1; i++) {
             Position a = array[i];
@@ -181,136 +198,18 @@ public class Day9 {
                     int right = Math.max(a.x, b.x);
                     int bottom = Math.max(a.y, b.y);
                     int left = Math.min(a.x, b.x);
-                    /*
-                    A-B
-                    | |
-                    D-C
-                    */
-                    Position A = new Position(left, top);
-                    Position B = new Position(right, top);
-                    Position C = new Position(right, bottom);
-                    Position D = new Position(left, bottom);
-                    Segment TOP = new Segment(A, B);
-                    Segment RIGHT = new Segment(B, C);
-                    Segment BOTTOM = new Segment(C, D);
-                    Segment LEFT = new Segment(D, A);
-                    if (intersection(array, new Segment(A, B))
-                            || intersection(array, new Segment(B, C))
-                            || intersection(array, new Segment(C, D))
-                            || intersection(array, new Segment(D, A))) {
+
+                    if (intersectsPolygon(polygon, top, right, bottom, left)) {
                         continue;
-                    } else {
-                        boolean found = false;
-                        for (int k = 0; k < array.length && !found; k++) {
-                            if (inStrict(array[k], top, right, bottom, left)) {
-                                found = true;
-                            }
-                            int k2 = k == array.length - 2 ? 0 : array.length - 1;
-                            Position p1 = array[k];
-                            Position p2 = array[k2];
-                            if (inOrEdge(p1, top, right, bottom, left) && !inStrict(p1, top, right, bottom, left)
-                                    && inOrEdge(p2, top, right, bottom, left) && !inStrict(p2, top, right, bottom, left)) {
-                                // if they're both in edge, they must be in the same side (maybe a corner)
-                                if (inSegment(p1, TOP) && !inSegment(p2, TOP)
-                                        || inSegment(p1, RIGHT) && !inSegment(p2, RIGHT)
-                                        || inSegment(p1, BOTTOM) && !inSegment(p2, BOTTOM)
-                                        || inSegment(p1, LEFT) && !inSegment(p2, LEFT)) {
-                                    found = true;
-                                }
-                            }
-                        }
-                        if (found) {
-                            continue;
-                        }
                     }
+                    
                     // Got it
                     largestP2 = area;
                     System.out.println("-");
-//                    boolean found = false;
-//                    for (int k = 0; k < array.length && !found; k++) {
-//                        int k2 = k + 1;
-//                        if (k2 == array.length) k2 = 0;
-//                        Segment s = new Segment(array[k], array[k2]);
-//                        boolean startInStrict = inStrict(array[k], top, right, bottom, left);
-//                        boolean endInStrict = inStrict(array[k2], top, right, bottom, left);
-//                        boolean startInOrEdge = inOrEdge(array[k], top, right, bottom, left);
-//                        boolean endInOrEdge = inOrEdge(array[k2], top, right, bottom, left);
-//                        boolean startOut = out(array[k], top, right, bottom, left);
-//                        boolean endOut = out(array[k2], top, right, bottom, left);
-//                        if (startInStrict || endInStrict
-//                                || (s.isHorizontal() && (s.start.x < s.end.x && inSegment(s.start, LEFT) && inSegment(s.end, RIGHT) && !s.start.equals(A) && !s.start.equals(D) && !s.end.equals(B) && !s.end.equals(C))
-//                                                                             || inSegment(s.end, LEFT) && inSegment(s.start, RIGHT) && !s.start.equals(B) && !s.start.equals(C) && !s.end.equals(A) && !s.end.equals(D))
-//                                || (s.start.y < s.end.y && inSegment(s.start, TOP) && inSegment(s.end, BOTTOM) && !s.start.equals(A) && !s.start.equals(B) && !s.end.equals(C) && !s.end.equals(D))
-//                                                        || inSegment(s.end, TOP) && inSegment(s.start, BOTTOM) && !s.start.equals(C) && !s.start.equals(D) && !s.end.equals(A) && !s.end.equals(B)) {
-//                            found = true;
-//                        }
-//                    }
-//                    if (!found) {
-//                        largestP2 = area;
-//                        System.out.println("check");
-//                    }
                 }
             }
         }
         System.out.println("largestP2: " + largestP2);
-        
-        // part 1
-//        HashSet<Position> red = new HashSet<>(positions.size());
-//        for (Position p : positions) {
-//            red.add(new Position(p.x, p.y));
-//        }
-//        boolean[][] red = new boolean[height][width];
-//        for (int y = 0; y < height; y++) {
-//            for (int x = 0; x < width; x++) {
-//                red[y][x] = false;
-//            }
-//        }
-//        
-//        for (Position p : positions) {
-//            red[p.y - minY][p.x - minX] = true;
-//        }
-        
-        // BFS
-//        long largest = 0;
-//        record Offset(int top, int right, int bottom, int left) {};
-//        LinkedList<Offset> queue = new LinkedList<>();
-//        queue.add(new Offset(0, 0, 0, 0));
-//        while (largest == 0 && !queue.isEmpty()) {
-//            Offset offset = queue.remove();
-//            // a1
-//            //   \
-//            //    a2
-//            Position a1 = new Position(offset.left, offset.top);
-//            System.out.println(a1);
-//            Position a2 = new Position(width - offset.right - 1, height - offset.bottom - 1);
-//            
-//            //if (red[a1.y][a1.x] && red[a2.y][a2.x]) {
-//            if (red.contains(a1) && red.contains(a2)) {
-//                int largestWidth = a2.x - a1.x + 1;
-//                int largestHeight = a2.y - a1.y + 1;
-//                largest = largestWidth * largestHeight;
-//            }
-//            
-//            //    b1
-//            //   /
-//            // b2
-//            Position b1 = new Position(width - offset.right - 1, offset.top);
-//            Position b2 = new Position(offset.left, height - offset.bottom - 1);
-//            
-//            //if (red[b1.y][b1.x] && red[b2.y][b2.x]) {
-//            if (red.contains(b1) && red.contains(b2)) {
-//                int largestWidth = b1.x - b2.x + 1;
-//                int largestHeight = b2.y - b1.y + 1;
-//                largest = largestWidth * largestHeight;
-//            }
-//            
-//            queue.add(new Offset(offset.top + 1, offset.right, offset.bottom, offset.left));
-//            queue.add(new Offset(offset.top, offset.right + 1, offset.bottom, offset.left));
-//            queue.add(new Offset(offset.top, offset.right, offset.bottom + 1, offset.left));
-//            queue.add(new Offset(offset.top, offset.right, offset.bottom, offset.left + 1));
-//        }
-//        
-//        System.out.println("largest = " + largest);
     }
     
 }
