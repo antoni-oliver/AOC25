@@ -5,6 +5,7 @@
 package aoc25;
 
 import java.io.*;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
@@ -228,33 +229,78 @@ public class Day10 {
         
         getData("day/10/input");
         
-        // PART 2 : BFS
+        // PART 2 : PROLOG TIME
+        /*
+        swipl -q -g "Vars=[N0,N1,N2,N3,N4,N5],
+                     Vars ins 0..300,
+                     sum(Vars, #=, Sum),
+                     N4+N5#=3,
+                     N1+N5#=5,
+                     N2+N3+N4#=4,
+                     N0+N1+N3#=7,
+                     labeling([min(Sum)],Vars),
+                     write(Sum)."
+            -t halt .\src\aoc25\Day10.pl
+        */
         long totalSteps2 = 0;
         for (int i = 0; i < machines.length; i++) {
-            LinkedList<Machine> q = new LinkedList<>();
-            LinkedList<Machine> done = new LinkedList<>();
-            q.add(machines[i]);
-            System.out.println("--> " + machines[i]);
-            int steps = -1;
-            while (steps == -1 && !q.isEmpty()) {
-                Machine m = q.remove();
-                //System.out.println(m);
-                if (m.isGoalPart2()) {
-                    steps = m.steps;
-                } else if (m.tooMuch()) {
-                    // prune
-                } else {
-                    for (int j = 0; j < m.buttons.length; j++) {
-                        Machine n = m.useButtonPart2(j);
-                        if (!done.contains(n)) {
-                            done.add(n);
-                            q.add(n);
-                        }
-                    }
+            Machine m = machines[i];
+            // 1. For each light, make a list of the indexes of the buttons that turn it
+            /*
+           buttons  (3) (1,3) (2) (2,3) (0,2) (0,1) |
+                     0    1    2    3     4     5   |
+           lights                                   | Lists     Equations ( = goal)
+            0: 3                          x     x   | [4,5]     N4+N5=3
+            1: 5          x                     x   | [1,5]     N1+N5=5
+            2: 4               x    x     x         | [2,3,4]   N2+N3+N4=4
+            3: 7     x    x         x               | [0,1,3]   N0+N1+N3=7
+            */
+            StringBuilder prolog = new StringBuilder();
+            LinkedList<String> varNames = new LinkedList<>();
+            LinkedList<String>[] buttonsThatTurnLight = new LinkedList[m.joltage.length];
+            for (int lightId = 0; lightId < buttonsThatTurnLight.length; lightId++) {
+                buttonsThatTurnLight[lightId] = new LinkedList<>();
+            }
+
+            for (int buttonId = 0; buttonId < m.buttons.length; buttonId++) {
+                String varName = "N" + buttonId;
+                varNames.add(varName);
+                int[] button = m.buttons[buttonId];
+                for (int lightIndex = 0; lightIndex < button.length; lightIndex++) {
+                    int lightId = button[lightIndex];
+                    buttonsThatTurnLight[lightId].add(varName);
                 }
             }
-            System.out.println(i + ": " + steps);
-            totalSteps2 += steps;
+            
+            prolog.append("Vars=[").append(String.join(",", varNames)).append("],");
+            prolog.append("Vars ins 0..sup,");
+            prolog.append("sum(Vars,#=,Sum),");
+            for (int lightId = 0; lightId < buttonsThatTurnLight.length; lightId++) {
+                // N4+N5#=3,
+                // sum([N4,N5],#=,3),
+                //prolog.append(String.join("+", buttonsThatTurnLight[lightId]))
+                //        .append("#=").append(m.joltageGoal[lightId]).append(",");
+                prolog.append("sum([").append(String.join(",", buttonsThatTurnLight[lightId]))
+                        .append("],#=,").append(m.joltageGoal[lightId]).append("),");
+            }
+            // prolog.append("Sum#=").append(String.join("+", varNames)).append(",");
+            prolog.append("labeling([ffc, bisect, min(Sum)],Vars),");
+            prolog.append("write(Sum).");
+            
+            System.out.println(prolog);
+            
+            try {
+                ProcessBuilder builder = new ProcessBuilder("cmd.exe", "/c", "swipl.exe -q -g \"" + prolog + "\" -t halt ./src/aoc25/Day10.pl");
+                Process process = builder.start();
+                process.waitFor();
+                BufferedReader output = new BufferedReader(new InputStreamReader(process.getInputStream()));
+                String line = output.readLine();
+                int steps = Integer.parseInt(line);
+                System.out.println(i + ": " + steps);
+                totalSteps2 += steps;
+            } catch (IOException | InterruptedException e) {
+                e.printStackTrace();
+            }
         }
         
         System.out.println("Part2 = " + totalSteps2);
