@@ -14,7 +14,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- *
+ * IMPORTANT: REQUIRES swipl IN THE PATH
  * @author Antoni
  */
 public class Day10 {
