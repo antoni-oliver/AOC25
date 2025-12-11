@@ -110,10 +110,8 @@ public class Day11 {
         //HashSet<Node> visited = new HashSet<>(); // forgot to use, and it was correct, LOL
 
         int exitsP1 = 0;
-        int i = 0;
         stack.push(you);
         while (!stack.isEmpty()) {
-            System.out.println(++i);
             Node cur = stack.pop();
             if (cur == out) {
                 exitsP1++;
@@ -128,89 +126,55 @@ public class Day11 {
         System.out.println("ExitsP1 = " + exitsP1);
     }
 
-    record NodeWithPast(Node node, LinkedList<Node> past, HashSet<Node> visited) {
+    record NodePlus(Node node, boolean dacFound, boolean fftFound) {
 
-        public NodeWithPast(Node node) {
-            this(node, new LinkedList<>(), new HashSet<>());
+        public NodePlus(Node node) {
+            this(node, false, false);
         }
+        
+        @Override
+        public boolean equals(Object other) {
+            NodePlus np = (NodePlus) other;
+            return node.equals(np.node) && dacFound == np.dacFound && fftFound == np.fftFound;
+        }
+    };
+    
+    HashMap<NodePlus,Long> exits;
+    
+    long dfs2(NodePlus np) {
+        Node node = np.node;
+        boolean dacFound = np.dacFound;
+        boolean fftFound = np.fftFound;
+        if (node == out) {
+            if (dacFound && fftFound) {
+                return 1;
+            } else {
+                return 0;
+            }
+        }
+        if (exits.containsKey(np)) {
+            return exits.get(np);
+        }
+        if (node == dac) {
+            dacFound = true;
+        } else if (node == fft) {
+            fftFound = true;
+        }
+        long exitsFromChildren = 0;
+        for (Node next : node.connections) {
+            exitsFromChildren += dfs2(new NodePlus(next, dacFound, fftFound));
+        }
+        exits.put(np, exitsFromChildren);
+        return exitsFromChildren;
     }
-
-    ;
     
     void part2() {
         // PART 2
-        // DFS, stacking not only the node but also the past nodes
-        LinkedList<NodeWithPast> stack = new LinkedList<>();
-        HashMap<Node,Integer> exitsFromHere = new HashMap<>();
-
-        int exitsP2 = 0;
-        int i = 0;
-        NodeWithPast firstNode = new NodeWithPast(svr);
-        stack.push(firstNode);
-        while (!stack.isEmpty()) {
-            //System.out.println(++i);
-            NodeWithPast nwp = stack.pop();
-            Node cur = nwp.node;
-            //System.out.println(cur);
-            LinkedList<Node> past = nwp.past;
-            HashSet<Node> visited = nwp.visited;
-            if (cur == out && visited.contains(fft) && visited.contains(dac)) {
-                // we undo the past and check for fft and dac
-                boolean foundFFT = false;
-                boolean foundDAC = false;
-                Node n = null;
-                while (!past.isEmpty() && !(foundFFT && foundDAC)) {
-                    n = past.pop();
-                    if (n == fft) foundFFT = true;
-                    if (n == dac) foundDAC = true;
-                }
-                if (foundFFT && foundDAC) {
-                    // mark from either fft or dac (whichever was found first)
-                    // [this is n] upwards, with +1 exit
-                    while (n != null) {
-                        int exits = 0;
-                        if (exitsFromHere.containsKey(n)) {
-                            exits = exitsFromHere.get(n);
-                        }
-                        exits++;
-                        exitsFromHere.put(n, exits);
-                        if (!past.isEmpty()) {
-                            n = past.pop();
-                        } else {
-                            n = null;
-                        }
-                    }
-                    exitsP2++;
-                } // si no, posar amb zero sortides? -- assegurar que avall no se lia
-            }
-
-            LinkedList<Node> newPast = new LinkedList<>(past);
-            HashSet<Node> newVisited = new HashSet<>(visited);
-            newPast.push(cur);
-            newVisited.add(cur);
-            for (Node next : cur.connections) {
-                if (exitsFromHere.containsKey(next)) {
-                    System.out.println("case b");
-                    // next already has X exits -> add X to the exits of the newPast
-                    // (including cur, but NOT next)
-                    // this means it is the first in a fft-dac chain or an antecessor
-                    int alreadyFoundExits = exitsFromHere.get(next);
-                    newPast.forEach((n) -> {
-                        int exits = 0;
-                        if (exitsFromHere.containsKey(n)) {
-                            exits = exitsFromHere.get(n);
-                        }
-                        exits++;
-                        exitsFromHere.put(n, exits);
-                    });
-                    exitsP2 += alreadyFoundExits;
-                } else {
-                    stack.push(new NodeWithPast(next, newPast, newVisited));
-                }
-            }
-        }
-        
-        System.out.println("x" + exitsFromHere.get(svr));
+        // for each node, know if we have visited both dac and fft.
+        // after getting the exits from their children, we can cache it.
+        // it is not the same if having visited dac or fft are not the same.
+        exits = new HashMap<>();
+        long exitsP2 = dfs2(new NodePlus(svr));
 
         System.out.println("ExitsP2 = " + exitsP2);
     }
