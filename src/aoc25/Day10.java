@@ -180,9 +180,6 @@ public class Day10 {
 
                     machines.add(m);
                     
-                    System.out.println("G1 = " + group1);
-                    System.out.println("G2 = " + group2);
-                    System.out.println("G3 = " + group3);
                 } else {
                     System.out.println("?");
                 }
@@ -203,44 +200,58 @@ public class Day10 {
      */
     public static void main(String[] args) {
         // TODO code application logic here
-//        getData("day/10/input");
-//        
-//        // PART 1 : BFS
-//        long totalSteps = 0;
-//        for (int i = 0; i < machines.length; i++) {
-//            LinkedList<Machine> q = new LinkedList<>();
-//            q.add(machines[i]);
-//            int steps = -1;
-//            while (steps == -1 && !q.isEmpty()) {
-//                Machine m = q.remove();
-//                if (m.isGoalPart1()) {
-//                    steps = m.steps;
-//                } else {
-//                    for (int j = 0; j < m.buttons.length; j++) {
-//                        q.add(m.useButtonPart1(j));
-//                    }
-//                }
-//            }
-//            System.out.println(i + ": " + steps);
-//            totalSteps += steps;
-//        }
-//        
-//        System.out.println("Part1 = " + totalSteps);
+        getData("day/10/input");
+        
+        // PART 1 : BFS
+        long totalSteps = 0;
+        for (int i = 0; i < machines.length; i++) {
+            LinkedList<Machine> q = new LinkedList<>();
+            q.add(machines[i]);
+            int steps = -1;
+            while (steps == -1 && !q.isEmpty()) {
+                Machine m = q.remove();
+                if (m.isGoalPart1()) {
+                    steps = m.steps;
+                } else {
+                    for (int j = 0; j < m.buttons.length; j++) {
+                        q.add(m.useButtonPart1(j));
+                    }
+                }
+            }
+            System.out.println(i + ": " + steps);
+            totalSteps += steps;
+        }
+        
+        System.out.println("Part1 = " + totalSteps);
         
         getData("day/10/input");
         
         // PART 2 : PROLOG TIME
         /*
-        swipl -q -g "Vars=[N0,N1,N2,N3,N4,N5],
-                     Vars ins 0..300,
-                     sum(Vars, #=, Sum),
-                     N4+N5#=3,
-                     N1+N5#=5,
-                     N2+N3+N4#=4,
-                     N0+N1+N3#=7,
-                     labeling([min(Sum)],Vars),
-                     write(Sum)."
-            -t halt .\src\aoc25\Day10.pl
+        swipl -q -g solve -t halt tmp.pl
+        */
+        // tmp.pl:
+        /*
+        :- use_module(library(simplex)).
+
+        solve :-
+          gen_state(S0),
+          do_constraints(S0, S),
+          objective(S,O),
+          write(O).
+
+        do_constraints -->
+          constraint([v4,v5] = 3),
+          constraint([v1,v5] = 5),
+          constraint([v2,v3,v4] = 4),
+          constraint([v0,v1,v3] = 7),
+          constraint(integral(v0)),
+          constraint(integral(v1)),
+          constraint(integral(v2)),
+          constraint(integral(v3)),
+          constraint(integral(v4)),
+          constraint(integral(v5)),
+          minimize([v0,v1,v2,v3,v4,v5]).
         */
         long totalSteps2 = 0;
         for (int i = 0; i < machines.length; i++) {
@@ -256,45 +267,59 @@ public class Day10 {
             3: 7     x    x         x               | [0,1,3]   N0+N1+N3=7
             */
             StringBuilder prolog = new StringBuilder();
-            LinkedList<String> varNames = new LinkedList<>();
+            String[] varNames = new String[m.buttons.length];
+            String[] symbolNames = new String[m.buttons.length];
             LinkedList<String>[] buttonsThatTurnLight = new LinkedList[m.joltage.length];
             for (int lightId = 0; lightId < buttonsThatTurnLight.length; lightId++) {
                 buttonsThatTurnLight[lightId] = new LinkedList<>();
             }
 
             for (int buttonId = 0; buttonId < m.buttons.length; buttonId++) {
-                String varName = "N" + buttonId;
-                varNames.add(varName);
+                String varName = "V" + buttonId;
+                String symbolName = "v" + buttonId;
+                varNames[buttonId] = varName;
+                symbolNames[buttonId] = symbolName;
                 int[] button = m.buttons[buttonId];
                 for (int lightIndex = 0; lightIndex < button.length; lightIndex++) {
                     int lightId = button[lightIndex];
-                    buttonsThatTurnLight[lightId].add(varName);
+                    buttonsThatTurnLight[lightId].add(symbolName);
                 }
             }
             
-            prolog.append("Vars=[").append(String.join(",", varNames)).append("],");
-            prolog.append("Vars ins 0..sup,");
-            prolog.append("sum(Vars,#=,Sum),");
-            for (int lightId = 0; lightId < buttonsThatTurnLight.length; lightId++) {
-                // N4+N5#=3,
-                // sum([N4,N5],#=,3),
-                //prolog.append(String.join("+", buttonsThatTurnLight[lightId]))
-                //        .append("#=").append(m.joltageGoal[lightId]).append(",");
-                prolog.append("sum([").append(String.join(",", buttonsThatTurnLight[lightId]))
-                        .append("],#=,").append(m.joltageGoal[lightId]).append("),");
-            }
-            // prolog.append("Sum#=").append(String.join("+", varNames)).append(",");
-            prolog.append("labeling([ffc, bisect, min(Sum)],Vars),");
-            prolog.append("write(Sum).");
+            prolog.append(":- use_module(library(simplex)).\n\n");
+            prolog.append("solve :-\n");
+            prolog.append("  gen_state(S0),\n");
+            prolog.append("  do_constraints(S0, S),\n");
+            prolog.append("  objective(S,Sum),\n");
+            prolog.append("  write(Sum).\n\n");
             
-            System.out.println(prolog);
+            prolog.append("do_constraints -->\n");
+            
+            for (int lightId = 0; lightId < buttonsThatTurnLight.length; lightId++) {
+                // constraint([v4,v5] = 3),
+                prolog.append("  constraint([").append(String.join(",", buttonsThatTurnLight[lightId]))
+                        .append("] = ").append(m.joltageGoal[lightId]).append("),\n");
+            }
+            for (int j = 0; j < symbolNames.length; j++) {
+                prolog.append("  constraint(integral(")
+                        .append(symbolNames[j])
+                        .append(")),\n");
+            }
+            prolog.append("  minimize([").append(String.join(",", symbolNames)).append("]).");
+            
+            // System.out.println(prolog);
             
             try {
-                ProcessBuilder builder = new ProcessBuilder("cmd.exe", "/c", "swipl.exe -q -g \"" + prolog + "\" -t halt ./src/aoc25/Day10.pl");
+                FileWriter fw = new FileWriter("tmp.pl");
+                fw.write(prolog.toString());
+                fw.close();
+                ProcessBuilder builder = new ProcessBuilder("cmd.exe", "/c", "swipl.exe -q -g solve -t halt tmp.pl");
                 Process process = builder.start();
                 process.waitFor();
                 BufferedReader output = new BufferedReader(new InputStreamReader(process.getInputStream()));
                 String line = output.readLine();
+                File f = new File("tmp.pl");
+                f.delete();
                 int steps = Integer.parseInt(line);
                 System.out.println(i + ": " + steps);
                 totalSteps2 += steps;
@@ -305,36 +330,6 @@ public class Day10 {
         
         System.out.println("Part2 = " + totalSteps2);
 
-
-//        // PART 2: DFS
-//        long totalSteps2 = 0;
-//        for (int i = 0; i < machines.length; i++) {
-//            LinkedList<Machine> s = new LinkedList<>();
-//            LinkedList<Machine> done = new LinkedList<>();
-//            s.push(machines[i]);
-//            System.out.println("--> " + machines[i]);
-//            int steps = -1;
-//            while (steps == -1 && !s.isEmpty()) {
-//                Machine m = s.pop();
-//                System.out.println(m);
-//                if (m.isGoalPart2()) {
-//                    steps = m.steps;
-//                } else if (m.tooMuch()) {
-//                    // continue
-//                } else {
-//                    for (int j = 0; j < m.buttons.length; j++) {
-//                        Machine r = m.useButtonPart2(j);
-//                        if (!done.contains(r)) {
-//                            done.add(r);
-//                            s.push(r);
-//                        }
-//                    }
-//                }
-//            }
-//            System.out.println(i + ": " + steps);
-//            totalSteps2 += steps;
-//        }
-//        System.out.println("Part2 = " + totalSteps2);
     }
     
 }
